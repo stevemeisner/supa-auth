@@ -1,8 +1,18 @@
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/utils/supabase/middleware'
+import { NextResponse, type NextRequest } from 'next/server'
+import { createClient } from '@/utils/supabase/middleware'
+import { UNAUTHENTICATED_ROUTES } from './utils/appRoutes'
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const { supabase, response } = await createClient(request)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user && !isAllowedPath(request)) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return response
 }
 
 export const config = {
@@ -17,4 +27,10 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
+}
+
+const isAllowedPath = (request: NextRequest) => {
+  return UNAUTHENTICATED_ROUTES.some(
+    (path) => request.nextUrl.pathname === path,
+  )
 }
